@@ -3,7 +3,7 @@
  * Plugin Name: Fast Inventory REST API
  * Description: Lightweight, read-only inventory API for external live viewer.
  * Version: 1.1.0
- * Author: Antigravity Speed Ops
+ * Author: Dimitris Nimas
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -269,3 +269,4 @@ function inv_generate_data( $search_term = '' ) {
         ]
     ];
 }
+
