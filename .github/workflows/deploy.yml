@@ -1,0 +1,48 @@
+name: Deploy Inventory Viewer
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Inject Configuration
+        env:
+          INV_API_URL: ${{ secrets.INV_API_URL }}
+          INV_API_KEY: ${{ secrets.INV_API_KEY }}
+          INV_AUTH_USER: ${{ secrets.INV_AUTH_USER }}
+          INV_AUTH_PASS: ${{ secrets.INV_AUTH_PASS }}
+        run: |
+          python3 -c "
+          import os
+
+          # Read file
+          with open('index.html', 'r', encoding='utf-8') as f:
+              content = f.read()
+
+          # Replace safely
+          content = content.replace('{{API_URL}}', os.environ.get('INV_API_URL', ''))
+          content = content.replace('{{API_KEY}}', os.environ.get('INV_API_KEY', ''))
+          content = content.replace('{{AUTH_USER}}', os.environ.get('INV_AUTH_USER', ''))
+          content = content.replace('{{AUTH_PASS}}', os.environ.get('INV_AUTH_PASS', ''))
+
+          # Save file
+          with open('index.html', 'w', encoding='utf-8') as f:
+              f.write(content)
+          
+          print('Injection complete.')
+          "
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
