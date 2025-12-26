@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management System (Portfolio)</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --primary-color: #2c3e50;
+            --stock-green: #27ae60;
+            --stock-red: #c0392b;
+        }
+
+        /* RESET & BASE */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* --- Header --- */
+        header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        #search-box {
+            padding: 12px;
+            width: 300px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        #status-bar {
+            margin-bottom: 15px;
+            padding: 0 5px;
+            font-size: 0.9em;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* --- Table / Desktop View --- */
+        .table-wrapper {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+
+        .stock-badge {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.85rem;
+            display: inline-block;
+        }
+
+        .stock-in {
+            background-color: var(--stock-green);
+        }
+
+        .stock-out {
+            background-color: var(--stock-red);
+        }
+
+        .price-col {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .img-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+            background: #eee;
+        }
+
+        /* --- Mobile Card View ("Square Box") --- */
+        @media (max-width: 900px) {
+            body {
+                padding: 10px;
+            }
+
+            /* Hide Desktop Headers */
+            thead {
+                display: none;
+            }
+
+            /* Remove Table Structure */
+            table,
+            tbody,
+            th,
+            td,
+            tr {
+                display: block;
+                width: 100%;
+            }
+
+            .table-wrapper {
+                background: transparent;
+                box-shadow: none;
+            }
+
+            /* The "Card" */
+            tr {
+                background: white;
+                margin-bottom: 15px;
+                border-radius: 12px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+                padding: 15px;
+                border: 1px solid #eee;
+            }
+
+            /* Cells inside Card */
+            td {
+                padding: 10px 0;
+                border-bottom: 1px solid #f5f5f5;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                /* Vertical Align */
+                text-align: right;
+            }
+
+            td:last-child {
+                border-bottom: none;
+            }
+
+            /* Add Labels */
+            td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #777;
+                text-align: left;
+                margin-right: 10px;
+                font-size: 0.9em;
+                min-width: 80px;
+                /* Ensure label has space */
+                flex: 0 0 auto;
+                /* Don't shrink label */
+            }
+
+            /* Ensure Value wraps if too long */
+            td>* {
+                flex: 1;
+                /* Take remaining space */
+                word-break: break-word;
+                /* Wrap long text */
+                text-align: right;
+            }
+
+            /* FIX: Stock Badge should not stretch */
+            td .stock-badge {
+                flex: 0 0 auto;
+                width: auto;
+                margin-left: auto;
+            }
+
+            /* Special Layout for Top of Card (Image) */
+            td[data-label="Image"] {
+                justify-content: center;
+                border: none;
+                padding-bottom: 15px;
+                margin-bottom: 10px;
+                border-bottom: 1px solid #eee;
+            }
+
+            td[data-label="Image"]::before {
+                display: none;
+            }
+
+            /* FIX: Image Contain */
+            .img-thumb {
+                width: 120px;
+                height: 120px;
+                border-radius: 8px;
+                object-fit: contain;
+                /* Full image visible */
+                background: #fff;
+                border: 1px solid #eee;
+            }
+
+            /* Search Bar Full Width */
+            header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+
+            #search-box {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            #status-bar {
+                flex-direction: column;
+                gap: 5px;
+                text-align: center;
+            }
+        }
+
+        /* --- Modal (Responsive) --- */
+        #product-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            padding: 10px;
+            /* Safer Gap */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-box {
+            background: white;
+            width: 100%;
+            max-width: 1000px;
+            max-height: 100%;
+            /* Allow full use */
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            padding: 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            /* Internal Scroll */
+            flex: 1;
+        }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 30px;
+        }
+
+        /* Mobile Modal Tweaks */
+        @media (max-width: 768px) {
+            .modal-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .modal-box {
+                height: 100%;
+                border-radius: 0;
+            }
+
+            #product-modal {
+                padding: 0;
+            }
+
+            /* Full Full Screen */
+
+            #modal-prices tr {
+                display: flex;
+                justify-content: space-between;
+                padding: 10px 0;
+                border-bottom: 1px solid #eee;
+            }
+
+            #modal-prices td {
+                padding: 0;
+                width: auto;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Simple Auth Overlay (Portfolio) -->
+    <div id="login-overlay"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:#eee; z-index:9000; display:flex; align-items:center; justify-content:center;">
+        <div
+            style="background:white; padding:40px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:100%; max-width:350px; text-align:center;">
+            <h2 style="margin-top:0; color:#2c3e50;">🔒 Login</h2>
+            <div style="margin-bottom:15px; text-align:left;">
+                <label for="auth-user"
+                    style="display:block; margin-bottom:5px; font-weight:bold; color:#555;">Username</label>
+                <input type="text" id="auth-user"
+                    style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:20px; text-align:left;">
+                <label for="auth-pass"
+                    style="display:block; margin-bottom:5px; font-weight:bold; color:#555;">Password</label>
+                <input type="password" id="auth-pass"
+                    style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;"
+                    onkeyup="if(event.key==='Enter') doLogin()">
+            </div>
+            <button onclick="doLogin()"
+                style="width:100%; padding:12px; background:#2c3e50; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer;">Enter</button>
+            <p id="auth-error" style="color:red; margin-top:10px; display:none;"></p>
+        </div>
+    </div>
+
+    <!-- Main App (Hidden) -->
+    <div class="container" id="main-app" style="display:none;">
+        <header>
+            <h1>Inventory Viewer</h1>
+            <div
+                style="display:flex; gap:10px; flex-wrap:wrap; width:100%; justify-content:space-between; align-items:center;">
+                <input type="text" id="search-box" placeholder="Search SKU, Name..." disabled>
+                <button onclick="doLogout()"
+                    style="padding: 10px 15px; cursor: pointer; border:1px solid #ddd; background:white; border-radius:4px;">Logout</button>
+            </div>
+        </header>
+
+        <div id="status-bar">
+            <span><span id="loading">Connecting...</span> <span id="record-count"
+                    style="display:none; font-weight:bold; margin-left:10px;"></span></span>
+            <span id="last-updated"></span>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="inventory-table">
+                <thead>
+                    <tr id="table-headers">
+                        <!-- Dynamic Headers -->
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Rows will be injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Product Details Modal -->
+    <div id="product-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="modal-title"
+                    style="margin:0; font-size:1.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80%;">
+                    Product Details</h2>
+                <button id="btn-close-modal"
+                    style="background:none; border:none; font-size:2rem; line-height:1; cursor:pointer; padding:0 10px;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-content" class="modal-grid">
+                    <!-- Right Column: Gallery -->
+                    <div style="order: 2;">
+                        <div id="modal-gallery"
+                            style="display:grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap:10px; margin-bottom:20px;">
+                        </div>
+                    </div>
+
+                    <!-- Left Column: Details -->
+                    <div style="order: 1;">
+                        <h3 id="modal-name" style="margin-top:0; color: var(--primary-color);"></h3>
+                        <p><strong>SKU:</strong> <span id="modal-sku"></span></p>
+                        <p><strong>Ref Code:</strong> <span id="modal-gn"></span></p>
+                        <div id="modal-stock" style="margin:15px 0;"></div>
+
+                        <div style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:20px;">
+                            <h4 style="margin:0 0 10px 0; border-bottom:1px solid #ddd; padding-bottom:5px;">Prices</h4>
+                            <table style="width:100%; margin:0;">
+                                <tbody id="modal-prices"></tbody>
+                            </table>
+                        </div>
+
+                        <div style="background: #fff; border:1px solid #eee; padding:15px; border-radius:8px;">
+                            <h4 style="margin:0 0 10px 0;">Description</h4>
+                            <div id="modal-description" style="line-height:1.6; color:#555;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="modal-loading" style="text-align:center; padding:50px; display:none;">Loading details...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CI/CD VARIABLES (Injected by GitHub Actions)
+        // ==========================================
+        const CFG = {
+            API_URL: '{{API_URL}}',
+            API_KEY: '{{API_KEY}}',
+            AUTH_USER: '{{AUTH_USER}}',
+            AUTH_PASS: '{{AUTH_PASS}}'
+        };
+        // ==========================================
+
+        let allProducts = [];
+        const searchInput = document.getElementById('search-box');
+        const loadingEl = document.getElementById('loading');
+
+        // Auth Logic
+        function doLogin() {
+            const u = document.getElementById('auth-user').value;
+            const p = document.getElementById('auth-pass').value;
+            const err = document.getElementById('auth-error');
+
+            if (CFG.AUTH_USER === '{{AUTH_USER}}') {
+                err.innerHTML = 'Error: Variables not replaced.'; err.style.display = 'block'; return;
+            }
+            if (CFG.AUTH_USER === '') {
+                err.innerHTML = 'Error: Secret is EMPTY.'; err.style.display = 'block'; return;
+            }
+
+            if (u === CFG.AUTH_USER && p === CFG.AUTH_PASS) {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                // Trigger empty search to check connection
+                fetchInventory('');
+            } else {
+                err.textContent = 'Invalid credentials.'; err.style.display = 'block';
+            }
+        }
+
+        function doLogout() { location.reload(); }
+
+        // --- Fetch ---
+        let debounceTimer;
+        async function fetchInventory(searchTerm = '') {
+            let url = CFG.API_URL;
+            let key = CFG.API_KEY;
+
+            if (!url || !key) return;
+
+            try {
+                loadingEl.textContent = 'Searching...';
+                document.getElementById('record-count').style.display = 'none';
+
+                const fetchUrl = url + (url.includes('?') ? '&' : '?') + 'search=' + encodeURIComponent(searchTerm);
+                const res = await fetch(fetchUrl, { headers: { 'X-INVENTORY-KEY': key } });
+
+                if (!res.ok) throw new Error(res.status);
+                const data = await res.json();
+
+                if (data.message && data.count === 0) {
+                    renderTable([]);
+                    loadingEl.textContent = data.message;
+                    return;
+                }
+
+                if (data.products) {
+                    allProducts = data.products; // Keep reference
+                    renderTable(data.products);
+                    loadingEl.textContent = '';
+                    searchInput.disabled = false;
+                    document.getElementById('record-count').textContent = `${data.count} found`;
+                    document.getElementById('record-count').style.display = 'inline';
+                }
+            } catch (err) {
+                console.error(err);
+                loadingEl.textContent = 'Error: ' + err.message;
+            }
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.trim();
+            clearTimeout(debounceTimer);
+            if (term.length < 3) {
+                if (term.length === 0) renderTable([]);
+                return;
+            }
+            debounceTimer = setTimeout(() => { fetchInventory(term); }, 600);
+        });
+
+        // --- Render ---
+        function renderTable(products) {
+            const head = document.getElementById('table-headers');
+            const body = document.getElementById('table-body');
+            body.innerHTML = ''; head.innerHTML = '';
+
+            if (products.length === 0) return;
+
+            // Headers
+            const staticHeaders = ['Image', 'SKU', 'Ref Code', 'Product Name', 'Stock'];
+            let priceHeaders = [];
+            products.forEach(p => {
+                if (p.prices) Object.keys(p.prices).forEach(k => { if (!priceHeaders.includes(k)) priceHeaders.push(k); });
+            });
+
+            // Build Head
+            staticHeaders.forEach(h => { let th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
+            priceHeaders.forEach(k => {
+                let th = document.createElement('th');
+                th.textContent = k.replace(/_/g, ' ').replace('Group', 'Grp').replace('B2b', '');
+                th.className = 'price-col';
+                head.appendChild(th);
+            });
+
+            // Build Body
+            products.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => openProductModal(p);
+
+                const stock = p.stock || 0;
+                const stockClass = p.status === 'instock' ? 'stock-in' : 'stock-out';
+                const img = p.img || 'https://via.placeholder.com/100?text=No+Item';
+
+                let html = `
+                    <td data-label="Image"><img src="${img}" class="img-thumb" loading="lazy"></td>
+                    <td data-label="SKU"><strong>${p.sku || '-'}</strong></td>
+                    <td data-label="Ref Code">${p.gn || '-'}</td>
+                    <td data-label="Name">${p.name}</td>
+                    <td data-label="Stock"><span class="stock-badge ${stockClass}">${stock}</span></td>
+                `;
+
+                priceHeaders.forEach(k => {
+                    let val = p.prices && p.prices[k] ? parseFloat(p.prices[k]).toFixed(2) + ' €' : '-';
+                    // Clean label for mobile
+                    let label = k.replace(/_/g, ' ').replace('Group', 'Grp').replace('B2b', '');
+                    html += `<td data-label="${label}" class="price-col">${val}</td>`;
+                });
+
+                tr.innerHTML = html;
+                body.appendChild(tr);
+            });
+        }
+
+        // --- Modal ---
+        const modal = document.getElementById('product-modal');
+        function openProductModal(p) {
+            modal.style.display = 'flex';
+            document.getElementById('modal-content').style.display = 'none';
+            document.getElementById('modal-loading').style.display = 'block';
+            document.getElementById('modal-title').textContent = p.sku;
+
+            document.getElementById('modal-name').textContent = p.name;
+
+            // Fetch Details using CFG
+            if (CFG.API_URL && CFG.API_KEY) {
+                const url = CFG.API_URL + (CFG.API_URL.includes('?') ? '&' : '?') + 'id=' + p.id;
+                fetch(url, { headers: { 'X-INVENTORY-KEY': CFG.API_KEY } })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.error) throw new Error(d.error);
+
+                        document.getElementById('modal-loading').style.display = 'none';
+                        document.getElementById('modal-content').style.display = 'grid'; // Grid layout
+
+                        document.getElementById('modal-name').textContent = d.name;
+                        document.getElementById('modal-sku').textContent = d.sku;
+                        document.getElementById('modal-gn').textContent = d.gnisios || '-';
+                        document.getElementById('modal-stock').innerHTML = `<span class="stock-badge ${d.status === 'instock' ? 'stock-in' : 'stock-out'}">${d.stock}</span>`;
+                        document.getElementById('modal-description').innerHTML = d.description || 'No description.';
+
+                        const gal = document.getElementById('modal-gallery');
+                        gal.innerHTML = '';
+                        if (d.images && d.images.length > 0) {
+                            d.images.forEach(src => {
+                                let i = document.createElement('img');
+                                i.src = src; i.style.cssText = 'width:100%; border-radius:4px; border:1px solid #ddd;';
+                                gal.appendChild(i);
+                            });
+                        }
+
+                        const pt = document.getElementById('modal-prices');
+                        pt.innerHTML = '';
+                        if (d.prices) Object.keys(d.prices).forEach(k => {
+                            let row = document.createElement('tr');
+                            row.innerHTML = `<td>${k.replace('Group', 'Grp')}</td><td style="font-weight:bold; text-align:right;">${parseFloat(d.prices[k]).toFixed(2)} €</td>`;
+                            pt.appendChild(row);
+                        });
+                    })
+                    .catch(e => {
+                        document.getElementById('modal-loading').textContent = 'Error loading details.';
+                    });
+            }
+        }
+
+        document.getElementById('btn-close-modal').onclick = () => modal.style.display = 'none';
+        window.onclick = (e) => { if (e.target == modal) modal.style.display = 'none'; }
+    </script>
+</body>
+
+</html>
