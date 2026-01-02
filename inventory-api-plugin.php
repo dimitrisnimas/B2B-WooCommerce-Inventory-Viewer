@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Fast Inventory REST API
  * Description: Lightweight, read-only inventory API for external live viewer.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Dimitris Nimas
  */
 
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'INV_API_NAMESPACE', 'kubik/v1' );
 define( 'INV_API_ROUTE', '/inventory' );
 define( 'INV_API_KEY_HEADER', 'X-INVENTORY-KEY' );
-define( 'INV_ACCCES_KEY', 'change_this_to_a_complex_random_string' );
+define( 'INV_ACCCES_KEY', 'CHANGE_THIS_TO_YOUR_SECURE_KEY' );
 define( 'INV_CACHE_TTL', 45 ); // seconds
 define( 'INV_CACHE_KEY', 'fast_inv_data_cache' );
 
@@ -72,10 +72,20 @@ function inv_get_inventory_data( $request ) {
         return rest_ensure_response( inv_get_single_product( intval($id) ) );
     }
 
-    // 2. Search Results
+    // 2. Fetch Categories (Dropdown)
+    if ( $request->get_param('action') === 'categories' ) {
+        return rest_ensure_response( inv_get_all_categories() );
+    }
+
+    // 3. Search Results
     $search = sanitize_text_field( $request->get_param('search') );
-    if ( ! empty( $search ) ) {
-        return rest_ensure_response( inv_generate_data( $search ) );
+    $cat_id = intval( $request->get_param('category') );
+    $page   = intval( $request->get_param('page') );
+    if ( $page < 1 ) $page = 1;
+
+    // Allow if search is NOT empty OR if category IS selected
+    if ( ! empty( $search ) || $cat_id > 0 ) {
+        return rest_ensure_response( inv_generate_data( $search, $cat_id, $page ) );
     }
 
     // 3. Default (Empty)
@@ -112,6 +122,9 @@ function inv_get_single_product( $id ) {
         $gn = $terms[0]->name; 
     }
 
+    // Categories
+    $cats = wc_get_product_category_list( $id, ', ' );
+
     // Prices
     $prices = [];
     $prices['retail'] = $product->get_price();
@@ -136,6 +149,7 @@ function inv_get_single_product( $id ) {
         'id'          => $product->get_id(),
         'name'        => $product->get_name(),
         'sku'         => $product->get_sku(),
+        // 'categories'  => $cats, // Reverted per request
         'gnisios'     => $gn,
         'description' => apply_filters( 'the_content', $product->get_description() ),
         'images'      => $images,
@@ -145,18 +159,42 @@ function inv_get_single_product( $id ) {
     ];
 }
 
+function inv_get_all_categories() {
+    $terms = get_terms( [
+        'taxonomy'   => 'product_cat',
+        'hide_empty' => true,
+    ] );
+
+    if ( is_wp_error( $terms ) ) return [];
+
+    $cats = [];
+    foreach ( $terms as $t ) {
+        $cats[] = [
+            'id'     => $t->term_id,
+            'name'   => $t->name,
+            'parent' => $t->parent,
+            'count'  => $t->count
+        ];
+    }
+    return $cats;
+}
+
 /**
  * 3. Efficient Data Generation
  */
-function inv_generate_data( $search_term = '' ) {
+function inv_generate_data( $search_term = '', $cat_id = 0, $page = 1 ) {
     global $inv_b2b_roles;
-    
+    $per_page = 50;
+
     if ( function_exists( 'wp_suspend_cache_addition' ) ) wp_suspend_cache_addition( true );
     if ( ! function_exists( 'wc_get_product' ) ) return [ 'error' => 'WooCommerce not active' ];
 
     // 0. Cache Check
-    $cache_key = 'inv_search_' . md5( $search_term );
+    $cache_key = 'inv_search_' . md5( $search_term . '_' . $cat_id );
     $cached_ids = get_transient( $cache_key );
+    
+    $found_ids = [];
+
     if ( $cached_ids !== false ) {
         $found_ids = $cached_ids;
     } else {
@@ -165,49 +203,107 @@ function inv_generate_data( $search_term = '' ) {
         $like_term = $wpdb->esc_like( $search_term ) . '%';
         $found_ids = [];
 
-        // A: Title
-        $title_ids = $wpdb->get_col( $wpdb->prepare(
-            "SELECT ID FROM {$wpdb->posts} WHERE post_type='product' AND post_status='publish' AND post_title LIKE %s LIMIT 50",
-            $like_term
-        ) );
-        $found_ids = array_merge( $found_ids, $title_ids );
+        // CAT FILTER PREP
+        $cat_join = "";
+        $cat_where = "";
+        $ids_str = "";
 
-        // B: SKU
-        $sku_ids = $wpdb->get_col( $wpdb->prepare(
-            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key='_sku' AND meta_value LIKE %s LIMIT 50",
-            $like_term
-        ) );
-        $found_ids = array_merge( $found_ids, $sku_ids );
+        if ( $cat_id > 0 ) {
+            // Get children
+            $term_ids = get_term_children( $cat_id, 'product_cat' );
+            $term_ids[] = $cat_id;
+            $ids_str = implode( ',', array_map( 'intval', $term_ids ) );
+            
+            // We join term_relationships to check existence in these cats
+            // Alias tr_c to avoid collision
+            $cat_join = " INNER JOIN {$wpdb->term_relationships} tr_c ON ID = tr_c.object_id "; // ID is usually ambiguous, careful
+            $cat_where = " AND tr_c.term_taxonomy_id IN ($ids_str) ";
+        }
 
-        // C: Attributes (pa_gnisios_kodikos, pa_antistixia)
-        $attr_ids = $wpdb->get_col( $wpdb->prepare(
-            "SELECT DISTINCT tr.object_id FROM {$wpdb->term_relationships} tr
-            INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-            INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
-            WHERE tt.taxonomy IN ('pa_gnisios_kodikos','pa_antistixia') AND t.name LIKE %s LIMIT 50",
-            $like_term
-        ) );
-        $found_ids = array_merge( $found_ids, $attr_ids );
 
-        // D: Fallback to Description if empty
-        if ( empty( $found_ids ) ) {
-            $content_ids = $wpdb->get_col( $wpdb->prepare(
-                "SELECT ID FROM {$wpdb->posts} WHERE post_type='product' AND post_status='publish' AND post_content LIKE %s LIMIT 50",
-                '%' . $wpdb->esc_like( $search_term ) . '%'
-            ) );
-            $found_ids = array_merge( $found_ids, $content_ids );
+
+        // --- BROWSE MODE (No Search Term, Only Category) ---
+        if ( empty( $search_term ) && $cat_id > 0 ) {
+            $sql_browse = "SELECT DISTINCT tr.object_id FROM {$wpdb->term_relationships} tr
+                INNER JOIN {$wpdb->posts} p ON tr.object_id = p.ID
+                WHERE p.post_type='product' AND p.post_status='publish' AND tr.term_taxonomy_id IN ($ids_str)
+                LIMIT 2000"; // Increased Limit
+            
+            $found_ids = $wpdb->get_col( $sql_browse );
+        }
+        // --- SEARCH MODE (Has Search Term) ---
+        else {
+            // A: Title
+            // NOTE: {$wpdb->posts} has column ID. 
+            // If we join, we better clarify ID refers to posts.ID, but here we construct query manually.
+            $sql_a = "SELECT {$wpdb->posts}.ID FROM {$wpdb->posts} ";
+            if ($cat_id > 0) $sql_a .= " INNER JOIN {$wpdb->term_relationships} tr_c ON {$wpdb->posts}.ID = tr_c.object_id ";
+            $sql_a .= " WHERE post_type='product' AND post_status='publish' AND post_title LIKE %s ";
+            if ($cat_id > 0) $sql_a .= " AND tr_c.term_taxonomy_id IN ($ids_str) ";
+            $sql_a .= " LIMIT 1000";
+
+            $title_ids = $wpdb->get_col( $wpdb->prepare( $sql_a, $like_term ) );
+            $found_ids = array_merge( $found_ids, $title_ids );
+
+            // B: SKU
+            // postmeta joined with posts? No, direct lookup on postmeta usually. 
+            // But to filter by category, we need to join relationships OR filter results later.
+            // Joining is efficient. 
+            // SELECT post_id FROM postmeta ... id is post_id
+            $sql_b = "SELECT post_id FROM {$wpdb->postmeta} ";
+            if ($cat_id > 0) $sql_b .= " INNER JOIN {$wpdb->term_relationships} tr_c ON {$wpdb->postmeta}.post_id = tr_c.object_id ";
+            $sql_b .= " WHERE meta_key='_sku' AND meta_value LIKE %s ";
+            if ($cat_id > 0) $sql_b .= " AND tr_c.term_taxonomy_id IN ($ids_str) ";
+            $sql_b .= " LIMIT 1000";
+
+            $sku_ids = $wpdb->get_col( $wpdb->prepare( $sql_b, $like_term ) );
+            $found_ids = array_merge( $found_ids, $sku_ids );
+
+            // C: Attributes (pa_gnisios_kodikos, pa_antistixia)
+            // tr is already used.
+            // tr.object_id IS the product ID.
+            $sql_c = "SELECT DISTINCT tr.object_id FROM {$wpdb->term_relationships} tr
+                INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+                INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id ";
+            if ($cat_id > 0) $sql_c .= " INNER JOIN {$wpdb->term_relationships} tr_c ON tr.object_id = tr_c.object_id ";
+            $sql_c .= " WHERE tt.taxonomy IN ('pa_gnisios_kodikos','pa_antistixia') AND t.name LIKE %s ";
+            if ($cat_id > 0) $sql_c .= " AND tr_c.term_taxonomy_id IN ($ids_str) ";
+            $sql_c .= " LIMIT 500";
+
+            $attr_ids = $wpdb->get_col( $wpdb->prepare( $sql_c, $like_term ) );
+            $found_ids = array_merge( $found_ids, $attr_ids );
+
+            // D: Fallback to Description if empty
+            if ( empty( $found_ids ) ) {
+                $sql_d = "SELECT {$wpdb->posts}.ID FROM {$wpdb->posts} ";
+                if ($cat_id > 0) $sql_d .= " INNER JOIN {$wpdb->term_relationships} tr_c ON {$wpdb->posts}.ID = tr_c.object_id ";
+                $sql_d .= " WHERE post_type='product' AND post_status='publish' AND post_content LIKE %s ";
+                if ($cat_id > 0) $sql_d .= " AND tr_c.term_taxonomy_id IN ($ids_str) ";
+                $sql_d .= " LIMIT 200";
+                
+                $content_ids = $wpdb->get_col( $wpdb->prepare( $sql_d, '%' . $wpdb->esc_like( $search_term ) . '%' ) );
+                $found_ids = array_merge( $found_ids, $content_ids );
+            }
         }
 
         $found_ids = array_unique( array_map( 'intval', $found_ids ) );
-        $found_ids = array_slice( $found_ids, 0, 50 ); // Hard Limit
-
+        // $found_ids = array_slice( $found_ids, 0, 50 ); // OLD Hard Limit - REMOVED
+        
         // Cache for 5 minutes
         set_transient( $cache_key, $found_ids, 300 );
     }
 
+    // --- PAGINATION SLICE ---
+    $total_items = count( $found_ids );
+    $total_pages = ceil( $total_items / $per_page );
+    $offset      = ( $page - 1 ) * $per_page;
+    
+    // Slice just the IDs we need for this page
+    $paged_ids   = array_slice( $found_ids, $offset, $per_page );
+
     $results = [];
 
-    foreach ( $found_ids as $p_id ) {
+    foreach ( $paged_ids as $p_id ) {
         try {
             $product = wc_get_product( $p_id );
             if ( ! $product ) continue;
@@ -223,6 +319,8 @@ function inv_generate_data( $search_term = '' ) {
                 'prices'=> []
             ];
 
+            // ... (price and attribute logic) ...
+
             if ( is_null( $item['stock'] ) ) {
                 $item['stock'] = ($item['status'] === 'instock') ? '>50' : 0;
             }
@@ -231,6 +329,9 @@ function inv_generate_data( $search_term = '' ) {
             if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
                 $item['gn'] = $terms[0]->name; 
             }
+
+            // Categories (Reverted per request)
+            // $item['cats'] = wc_get_product_category_list( $p_id, ', ' );
 
             $item['prices']['retail'] = $product->get_price();
 
@@ -259,14 +360,15 @@ function inv_generate_data( $search_term = '' ) {
 
     return [
         'timestamp' => current_time( 'mysql' ),
-        'count'     => count( $results ),
+        'count'     => $total_items, // Total Found (not just this page)
+        'total_pages' => $total_pages,
+        'current_page' => $page,
         'products'  => $results,
         'debug'     => [
             'term' => $search_term,
             'sql_like' => isset($like_term) ? $like_term : 'N/A',
             'ids_found' => isset($found_ids) ? count($found_ids) : 0,
-            'ids_list' => isset($found_ids) ? array_slice($found_ids, 0, 5) : []
+            // 'ids_list' => isset($found_ids) ? array_slice($found_ids, 0, 5) : []
         ]
     ];
 }
-
