@@ -1,43 +1,52 @@
-# 📦 Modern Inventory Management System (SPA)
+# KUBIK Inventory Viewer
 
-A lightweight, secure, and responsive Single Page Application (SPA) for real-time inventory management. This project demonstrates a decoupled architecture connecting a static frontend to a Headless WordPress backend via secure REST APIs.
+A lightweight, high-performance inventory viewer for WordPress/WooCommerce using a custom REST API endpoint.
 
-## 🚀 Key Features
+## Features
 
-*   **⚡ Real-Time Search**: Instant server-side search results as you type (debounced).
-*   **📱 Mobile-First Design**: Custom "Card View" for mobile devices, eliminating horizontal scrolling.
-*   **🖼️ Responsive Modal**: Full-screen product details with gallery, prices, and stock status.
-*   **🔒 Secure Authentication**:
-    *   **Frontend**: Client-side login overlay for portfolio demo protection.
-    *   **Backend**: API Key authentication (`X-INVENTORY-KEY`) and Basic Auth integration.
-    *   **CI/CD**: Secrets injected at build time via GitHub Actions (no hardcoded credentials).
-*   **📊 Dynamic Pricing**: Supports multi-tier pricing (Retail, Wholesale/B2B Groups).
+- **Fast Search**: Uses optimized SQL queries to search products by title, SKU, and attributes (GNISIOS).
+- **Infinite Scroll**: Seamlessly load more products as you scroll, replacing traditional pagination.
+- **Category Browsing**: Dedicated sidebar to browse products by category with a clean hierarchy.
+- **Responsive UI**: Works great on Desktop and Mobile devices.
+- **Secure**: Uses a custom API Key header (`X-INVENTORY-KEY`) to restrict access.
+- **Price Groups**: Supports WCB2B group prices and role-based pricing.
+- **Frontend-only Viewer**: The viewer is a single static HTML file (`index.html`) that can be hosted anywhere (e.g., a subdomain).
 
-## 🛠️ Architecture
+## Installation
 
-*   **Frontend**: Vanilla HTML5, CSS3, JavaScript (ES6+). Zero build tools required for local dev, but deployed via CI/CD.
-*   **Backend (Headless)**: WordPress + WooCommerce with Custom API Endpoints.
-*   **Security**: API Keys are never exposed in the source code. They are injected as environment variables during the GitHub Actions build process.
+### 1. Backend (WordPress)
+1. Copy `inventory-api-plugin.php` to your `wp-content/plugins/` directory.
+2. Edit `inventory-api-plugin.php` and set your desired `INV_ACCCES_KEY`.
+3. Activate the plugin in WordPress Admin.
+4. Ensure WooCommerce is installed and active.
 
-## 📱 Mobile Experience
+### 2. Frontend (Viewer)
+1. Open `index.html`.
+2. Locate the `CONFIG` block at the bottom of the script section.
+3. Update `URL` to your WordPress site's API endpoint (e.g., `https://your-site.com/wp-json/kubik/v1/inventory`).
+4. Update `KEY` to match the `INV_ACCCES_KEY` you set in the WordPress plugin.
+5. Upload `index.html` to your hosting or run it locally.
 
-The application features a custom responsive engine:
-*   **Desktop**: Full data table with sorting and quick views.
-*   **Mobile**: Transforms rows into interactive "Cards" with `object-fit: contain` images and stackable details.
+## Configuration
 
-## ⚙️ Configuration & Deployment
+### Hiding Prices
+You can hide specific price groups by adding them to the `HIDDEN_PRICES` array in `index.html`.
 
-### 1. Variables
-This project uses **GitHub Actions variables** to inject configuration at runtime:
-*   `API_URL`: The endpoint of the backend inventory API.
-*   `API_KEY`: The secure secret key for API access.
-*   `AUTH_USER`: Username for the frontend demo lock.
-*   `AUTH_PASS`: Password for the frontend demo lock.
+```javascript
+const HIDDEN_PRICES = ['Group 11324', 'Group 11322'];
+```
 
-### 2. Local Development
-To run locally, you can simply open `index.html`. 
-*   *Note*: You will need to manually replace the `{{VARIABLES}}` in the code or use a local `config.js` shim for testing.
+### Price Labels
+Map dynamic price keys to human-readable labels in the `PRICE_MAPPING` object.
 
----
+```javascript
+const PRICE_MAPPING = {
+    'retail': 'Retail Price',
+    'Group 11327': 'Wholesale',
+    // ...
+};
+```
 
-*This project is a sanitized version of a production system deployed for a high-volume auto parts distributor.*
+## Credits
+
+Developed by **[KUBIK](https://kubik.gr)**.
