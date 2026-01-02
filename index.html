@@ -1,10 +1,21 @@
+<!--
+██   ██ ██    ██ ██████  ██ ██   ██ 
+██  ██  ██    ██ ██   ██ ██ ██  ██  
+█████   ██    ██ ██████  ██ █████   
+██  ██  ██    ██ ██   ██ ██ ██  ██  
+██   ██  ██████  ██████  ██ ██   ██
+                            
+ Developed by KUBIK - https://kubik.gr 
+-->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management System (Portfolio)</title>
+    <title>TolidisParts Αποθήκη</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --bg-color: #f8f9fa;
@@ -27,9 +38,72 @@
             padding: 20px;
         }
 
-        .container {
-            max-width: 1400px;
+        .app-layout {
+            display: flex;
+            gap: 20px;
+            max-width: 1600px;
             margin: 0 auto;
+        }
+
+        .sidebar {
+            width: 250px;
+            flex-shrink: 0;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            position: sticky;
+            top: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            /* Fix flex overflow */
+        }
+
+        .cat-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .cat-item {
+            margin-bottom: 5px;
+        }
+
+        .cat-link {
+            display: block;
+            padding: 8px 10px;
+            color: #555;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .cat-link:hover,
+        .cat-link.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .sub-cat-list {
+            list-style: none;
+            padding-left: 20px;
+            display: none;
+        }
+
+        .cat-item.open>.sub-cat-list {
+            display: block;
+        }
+
+        .toggle-icon {
+            float: right;
+            font-size: 0.8em;
+            margin-top: 4px;
         }
 
         /* --- Header --- */
@@ -52,7 +126,6 @@
 
         #search-box {
             padding: 12px;
-            width: 300px;
             font-size: 16px;
             border: 1px solid #ccc;
             border-radius: 6px;
@@ -120,6 +193,10 @@
             color: var(--primary-color);
         }
 
+        th.price-col {
+            color: white !important;
+        }
+
         .img-thumb {
             width: 50px;
             height: 50px;
@@ -128,8 +205,20 @@
             background: #eee;
         }
 
-        /* --- Mobile Card View ("Square Box") --- */
         @media (max-width: 900px) {
+            .app-layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 200px;
+                /* Collapsed by default ideally, but keeping simple */
+                position: static;
+                margin-bottom: 20px;
+            }
+
+            /* ... rest of existing mobile styles ... */
             body {
                 padding: 10px;
             }
@@ -199,7 +288,6 @@
                 /* Take remaining space */
                 word-break: break-word;
                 /* Wrap long text */
-                text-align: right;
             }
 
             /* FIX: Stock Badge should not stretch */
@@ -233,26 +321,31 @@
                 border: 1px solid #eee;
             }
 
+
+
             /* Search Bar Full Width */
             header {
                 flex-direction: column;
                 align-items: stretch;
                 text-align: center;
+                gap: 10px;
             }
 
-            #search-box {
+            header div {
+                flex-direction: column;
+                width: 100% !important;
+                max-width: none !important;
+            }
+
+            #search-box,
+            #cat-filter {
                 width: 100%;
-                margin-top: 10px;
+                max-width: none !important;
+                margin-top: 5px;
             }
 
             h1 {
                 font-size: 1.8rem;
-            }
-
-            #status-bar {
-                flex-direction: column;
-                gap: 5px;
-                text-align: center;
             }
         }
 
@@ -308,6 +401,46 @@
             gap: 30px;
         }
 
+        /* --- Pagination --- */
+        .pagination-wrapper {
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+            /* Hidden by default */
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .page-btn {
+            background-color: white;
+            border: 1px solid #ddd;
+            color: #333;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #f1f1f1;
+        }
+
+        #page-info {
+            font-weight: bold;
+            color: #666;
+            margin: 0 10px;
+        }
+
         /* Mobile Modal Tweaks */
         @media (max-width: 768px) {
             .modal-grid {
@@ -344,61 +477,63 @@
 
 <body>
 
-    <!-- Simple Auth Overlay (Portfolio) -->
-    <div id="login-overlay"
-        style="position:fixed; top:0; left:0; width:100%; height:100%; background:#eee; z-index:9000; display:flex; align-items:center; justify-content:center;">
-        <div
-            style="background:white; padding:40px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.1); width:100%; max-width:350px; text-align:center;">
-            <h2 style="margin-top:0; color:#2c3e50;">🔒 Login</h2>
-            <div style="margin-bottom:15px; text-align:left;">
-                <label for="auth-user"
-                    style="display:block; margin-bottom:5px; font-weight:bold; color:#555;">Username</label>
-                <input type="text" id="auth-user"
-                    style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;">
-            </div>
-            <div style="margin-bottom:20px; text-align:left;">
-                <label for="auth-pass"
-                    style="display:block; margin-bottom:5px; font-weight:bold; color:#555;">Password</label>
-                <input type="password" id="auth-pass"
-                    style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;"
-                    onkeyup="if(event.key==='Enter') doLogin()">
-            </div>
-            <button onclick="doLogin()"
-                style="width:100%; padding:12px; background:#2c3e50; color:white; border:none; border-radius:4px; font-size:16px; cursor:pointer;">Enter</button>
-            <p id="auth-error" style="color:red; margin-top:10px; display:none;"></p>
-        </div>
-    </div>
 
-    <!-- Main App (Hidden) -->
-    <div class="container" id="main-app" style="display:none;">
-        <header>
-            <h1>Inventory Viewer</h1>
-            <div
-                style="display:flex; gap:10px; flex-wrap:wrap; width:100%; justify-content:space-between; align-items:center;">
-                <input type="text" id="search-box" placeholder="Search SKU, Name..." disabled>
-                <button onclick="doLogout()"
-                    style="padding: 10px 15px; cursor: pointer; border:1px solid #ddd; background:white; border-radius:4px;">Logout</button>
+
+    <div class="app-layout" id="main-app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Κατηγορίες</h3>
+            <ul id="cat-tree" class="cat-list">
+                <!-- Injected via JS -->
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header>
+                <h1>Αποθήκη</h1>
+                <input type="text" id="search-box" style="width:100%; max-width:600px;"
+                    placeholder="Αναζήτηση Προιόντων..." disabled>
+            </header>
+
+            <h2 id="current-view-title" style="font-size:1.2rem; color: #666; margin-bottom:10px; display:none;">
+            </h2>
+
+            <div id="status-bar">
+                <span><span id="loading">...</span> <span id="record-count"
+                        style="display:none; font-weight:bold; margin-left:10px;"></span></span>
+                <span id="last-updated"></span>
             </div>
-        </header>
 
-        <div id="status-bar">
-            <span><span id="loading">Connecting...</span> <span id="record-count"
-                    style="display:none; font-weight:bold; margin-left:10px;"></span></span>
-            <span id="last-updated"></span>
-        </div>
+            <div class="table-wrapper">
+                <table id="inventory-table">
+                    <thead>
+                        <tr id="table-headers">
+                            <!-- Dynamic Headers -->
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
 
-        <div class="table-wrapper">
-            <table id="inventory-table">
-                <thead>
-                    <tr id="table-headers">
-                        <!-- Dynamic Headers -->
-                    </tr>
-                </thead>
-                <tbody id="table-body">
-                    <!-- Rows will be injected here -->
-                </tbody>
-            </table>
-        </div>
+            <!-- Infinite Scroll Sentinel -->
+            <div id="scroll-sentinel" style="height: 50px; text-align:center; padding: 20px; color:#999; display:none;">
+                <span id="sentinel-loading">Φόρτωση περισσότερων...</span>
+            </div>
+
+            <!-- DEBUG CONSOLE 
+            <div id="debug-console" style="background:#000; color:#0f0; padding:10px; font-family:monospace; font-size:12px; height:100px; overflow-y:auto; margin-top:20px; display:none;">
+            </div>
+            -->
+
+            <footer
+                style="margin-top: 30px; text-align: center; font-size: 0.9em; color: #888; border-top: 1px solid #eee; padding-top: 15px;">
+                Developed by <a href="https://kubik.gr" target="_blank"
+                    style="color: #666; text-decoration: none; font-weight: bold;">KUBIK</a>
+            </footer>
+        </main>
     </div>
 
     <!-- Product Details Modal -->
@@ -407,13 +542,13 @@
             <div class="modal-header">
                 <h2 id="modal-title"
                     style="margin:0; font-size:1.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80%;">
-                    Product Details</h2>
+                    Λεπτομέρειες Προιόντος</h2>
                 <button id="btn-close-modal"
                     style="background:none; border:none; font-size:2rem; line-height:1; cursor:pointer; padding:0 10px;">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="modal-content" class="modal-grid">
-                    <!-- Right Column: Gallery -->
+                    <!-- Right Column: Info -->
                     <div style="order: 2;">
                         <div id="modal-gallery"
                             style="display:grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap:10px; margin-bottom:20px;">
@@ -423,142 +558,341 @@
                     <!-- Left Column: Details -->
                     <div style="order: 1;">
                         <h3 id="modal-name" style="margin-top:0; color: var(--primary-color);"></h3>
-                        <p><strong>SKU:</strong> <span id="modal-sku"></span></p>
-                        <p><strong>Ref Code:</strong> <span id="modal-gn"></span></p>
+                        <p><strong>Κωδικός:</strong> <span id="modal-sku"></span></p>
+                        <p><strong>Γνήσιος Κωδικός:</strong> <span id="modal-gn"></span></p>
                         <div id="modal-stock" style="margin:15px 0;"></div>
 
                         <div style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:20px;">
-                            <h4 style="margin:0 0 10px 0; border-bottom:1px solid #ddd; padding-bottom:5px;">Prices</h4>
+                            <h4 style="margin:0 0 10px 0; border-bottom:1px solid #ddd; padding-bottom:5px;">Τιμές
+                            </h4>
                             <table style="width:100%; margin:0;">
                                 <tbody id="modal-prices"></tbody>
                             </table>
                         </div>
 
                         <div style="background: #fff; border:1px solid #eee; padding:15px; border-radius:8px;">
-                            <h4 style="margin:0 0 10px 0;">Description</h4>
+                            <h4 style="margin:0 0 10px 0;">Περιγραφή</h4>
                             <div id="modal-description" style="line-height:1.6; color:#555;"></div>
                         </div>
                     </div>
                 </div>
-                <div id="modal-loading" style="text-align:center; padding:50px; display:none;">Loading details...</div>
+                <div id="modal-loading" style="text-align:center; padding:50px; display:none;">Φόρτωση...</div>
             </div>
         </div>
     </div>
 
     <script>
         // ==========================================
-        // CI/CD VARIABLES (Injected by GitHub Actions)
+        //  CONFIGURATION BLOCK
         // ==========================================
-        const CFG = {
-            API_URL: '{{API_URL}}',
-            API_KEY: '{{API_KEY}}',
-            AUTH_USER: '{{AUTH_USER}}',
-            AUTH_PASS: '{{AUTH_PASS}}'
+        const CONFIG = {
+            URL: 'https://your-wordpress-site.com/wp-json/kubik/v1/inventory',
+            KEY: 'CHANGE_THIS_TO_YOUR_SECURE_KEY',
+            DEBUG: false // Toggle this
         };
-        // ==========================================
 
-        let allProducts = [];
-        const searchInput = document.getElementById('search-box');
-        const loadingEl = document.getElementById('loading');
-
-        // Auth Logic
-        function doLogin() {
-            const u = document.getElementById('auth-user').value;
-            const p = document.getElementById('auth-pass').value;
-            const err = document.getElementById('auth-error');
-
-            if (CFG.AUTH_USER === '{{AUTH_USER}}') {
-                err.innerHTML = 'Error: Variables not replaced.'; err.style.display = 'block'; return;
-            }
-            if (CFG.AUTH_USER === '') {
-                err.innerHTML = 'Error: Secret is EMPTY.'; err.style.display = 'block'; return;
-            }
-
-            if (u === CFG.AUTH_USER && p === CFG.AUTH_PASS) {
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('main-app').style.display = 'block';
-                // Trigger empty search to check connection
-                fetchInventory('');
-            } else {
-                err.textContent = 'Invalid credentials.'; err.style.display = 'block';
+        function debugLog(msg) {
+            if (!CONFIG.DEBUG) return;
+            console.log('[INV]', msg);
+            const c = document.getElementById('debug-console');
+            if (c) {
+                c.style.display = 'block';
+                c.innerHTML += `<div>${new Date().toLocaleTimeString()} ${msg}</div>`;
+                c.scrollTop = c.scrollHeight;
             }
         }
 
-        function doLogout() { location.reload(); }
+        // Price Label Mapping
+        const PRICE_MAPPING = {
+            'retail': 'Λιανική',
+            // 'Group 11324': 'Κατώτατη', // HIDDEN
+            'Group 11327': 'Υπερχονδρική',
+            'Group 11326': 'Χονδρική'
+        };
+
+        const HIDDEN_PRICES = ['Group 11324', 'Group 11322'];
+
+        function formatPriceLabel(key) {
+            if (PRICE_MAPPING[key]) return PRICE_MAPPING[key];
+            // Fallback for others
+            return key.replace(/_/g, ' ').replace('Group', 'Grp').replace('B2b', '');
+        }
+
+        // ==========================================
+
+        const searchInput = document.getElementById('search-box');
+        const loadingEl = document.getElementById('loading');
+        const sentinel = document.getElementById('scroll-sentinel');
+
+        let currentCategoryId = 0;
+        let currentCategoryName = '';
+        let currentPage = 1;
+        let totalPages = 1;
+        let lastSearchTerm = '';
+        let isLoading = false;
+        let observer;
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (CONFIG.URL && CONFIG.KEY && !CONFIG.KEY.includes('CHANGE_THIS')) {
+                // Fetch Categories
+                fetchCategories();
+
+                loadingEl.textContent = 'Έτοιμο.';
+                searchInput.disabled = false;
+                searchInput.focus();
+
+                // Setup Observer
+                setupObserver();
+            } else {
+                loadingEl.innerHTML = '<b style="color:red">Setup Needed: Add API Key in index.html</b>';
+            }
+        });
+
+        // --- Observer Setup ---
+        function setupObserver() {
+            debugLog('Setting up observer...');
+            const options = {
+                root: null, // viewport
+                rootMargin: '200px', // trigger earlier
+                threshold: 0
+            };
+
+            observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    debugLog(`Intersect: ${entry.isIntersecting}, Loading: ${isLoading}, Page: ${currentPage}/${totalPages}`);
+                    if (entry.isIntersecting && !isLoading && currentPage < totalPages) {
+                        debugLog('Triggering load next page...');
+                        // Load Next Page
+                        fetchInventory(lastSearchTerm, currentPage + 1);
+                    }
+                });
+            }, options);
+
+            observer.observe(sentinel);
+        }
+
+        // --- Categories ---
+        async function fetchCategories() {
+            try {
+                const url = CONFIG.URL + (CONFIG.URL.includes('?') ? '&' : '?') + 'action=categories';
+                const res = await fetch(url, { headers: { 'X-INVENTORY-KEY': CONFIG.KEY } });
+                const cats = await res.json();
+
+                if (Array.isArray(cats)) {
+                    // Organize Header
+                    const map = {};
+                    cats.forEach(c => map[c.id] = { ...c, children: [] });
+                    const tree = [];
+                    cats.forEach(c => {
+                        if (c.parent && map[c.parent]) map[c.parent].children.push(map[c.id]);
+                        else tree.push(map[c.id]);
+                    });
+
+                    renderCategoryTree(tree, document.getElementById('cat-tree'));
+                }
+            } catch (e) { console.error('Cats error', e); }
+        }
+
+        function renderCategoryTree(nodes, container) {
+            nodes.forEach(n => {
+                const li = document.createElement('li');
+                li.className = 'cat-item';
+
+                const hasChildren = n.children && n.children.length > 0;
+
+                li.innerHTML = `
+                    <div class="cat-link" onclick="selectCategory(${n.id}, '${n.name}', this)">
+                        ${n.name}
+                        ${hasChildren ? '<i class="fa fa-chevron-down toggle-icon" onclick="toggleSub(event, this)"></i>' : ''}
+                    </div>
+                `;
+
+                if (hasChildren) {
+                    const ul = document.createElement('ul');
+                    ul.className = 'sub-cat-list';
+                    renderCategoryTree(n.children, ul);
+                    li.appendChild(ul);
+                }
+                container.appendChild(li);
+            });
+        }
+
+        function toggleSub(e, el) {
+            e.stopPropagation();
+            const li = el.closest('.cat-item');
+            li.classList.toggle('open');
+            el.className = li.classList.contains('open') ? 'fa fa-chevron-up toggle-icon' : 'fa fa-chevron-down toggle-icon';
+        }
+
+        function selectCategory(id, name, el) {
+            // Update UI
+            document.querySelectorAll('.cat-link').forEach(l => l.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            currentCategoryId = id;
+            currentCategoryName = name;
+            // Reset logic handled in fetchInventory(term, 1) call or wrapper
+
+            // Show Title
+            const titleEl = document.getElementById('current-view-title');
+            titleEl.innerHTML = 'Κατηγορία: ' + name + ' <button onclick="clearCategory()" style="font-size:0.7rem; padding: 4px 8px; margin-left:10px; cursor:pointer; background:#eee; border:1px solid #ccc; border-radius:4px;">Καθαρισμός</button>';
+            titleEl.style.display = 'block';
+
+            // Clear search but trigger fetch
+            searchInput.value = '';
+            lastSearchTerm = '';
+
+            // Hard Reset
+            renderTable([], true);
+            fetchInventory('', 1);
+        }
+
+        function clearCategory() {
+            currentCategoryId = 0;
+            currentCategoryName = '';
+            currentPage = 1;
+
+            document.querySelectorAll('.cat-link').forEach(l => l.classList.remove('active'));
+            document.getElementById('current-view-title').style.display = 'none';
+            searchInput.value = '';
+            lastSearchTerm = '';
+
+            // Clear table
+            renderTable([], true);
+            sentinel.style.display = 'none';
+            document.getElementById('record-count').style.display = 'none';
+        }
 
         // --- Fetch ---
         let debounceTimer;
-        async function fetchInventory(searchTerm = '') {
-            let url = CFG.API_URL;
-            let key = CFG.API_KEY;
 
-            if (!url || !key) return;
+        async function fetchInventory(searchTerm = '', page = 1) {
+            if (!CONFIG.URL || !CONFIG.KEY) return;
+            if (isLoading) return; // Guard
 
             try {
-                loadingEl.textContent = 'Searching...';
-                document.getElementById('record-count').style.display = 'none';
+                isLoading = true;
+                debugLog(`Fetching Page ${page} (Search: "${searchTerm}")`);
 
-                const fetchUrl = url + (url.includes('?') ? '&' : '?') + 'search=' + encodeURIComponent(searchTerm);
-                const res = await fetch(fetchUrl, { headers: { 'X-INVENTORY-KEY': key } });
+                // If new search (page 1), explicitly clear if triggered from search/cat
+                // But appending happens if page > 1
+                if (page === 1) {
+                    loadingEl.textContent = 'Γίνεται Αναζήτηση...';
+                    document.getElementById('record-count').style.display = 'none';
+                } else {
+                    sentinel.style.display = 'block'; // Ensure block
+                }
 
+                // Track state
+                lastSearchTerm = searchTerm;
+                currentPage = page;
+
+                let url = CONFIG.URL + (CONFIG.URL.includes('?') ? '&' : '?') + 'search=' + encodeURIComponent(searchTerm);
+                if (currentCategoryId > 0) url += '&category=' + currentCategoryId;
+                url += '&page=' + currentPage;
+
+                const res = await fetch(url, { headers: { 'X-INVENTORY-KEY': CONFIG.KEY } });
                 if (!res.ok) throw new Error(res.status);
+
                 const data = await res.json();
 
-                if (data.message && data.count === 0) {
-                    renderTable([]);
-                    loadingEl.textContent = data.message;
-                    return;
+                // Update Global Stats
+                if (data.products) {
+                    totalPages = parseInt(data.total_pages) || 1;
+                    const items = data.products || [];
+                    debugLog(`Got ${items.length} items. Total Stats: Page ${data.current_page}/${totalPages}, Count: ${data.count}`);
+
+                    if (data.message && data.count === 0) {
+                        // Empty result
+                        renderTable([], true);
+                        loadingEl.textContent = data.message;
+                    } else {
+                        // RENDER
+                        const isAppend = page > 1;
+                        renderTable(items, !isAppend);
+
+                        loadingEl.textContent = '';
+                        document.getElementById('record-count').textContent = `${data.count} συνολικά`;
+                        document.getElementById('record-count').style.display = 'inline';
+                    }
+                } else {
+                    debugLog('No products in response');
+                    if (page === 1) renderTable([], true);
                 }
 
-                if (data.products) {
-                    allProducts = data.products; // Keep reference
-                    renderTable(data.products);
-                    loadingEl.textContent = '';
-                    searchInput.disabled = false;
-                    document.getElementById('record-count').textContent = `${data.count} found`;
-                    document.getElementById('record-count').style.display = 'inline';
-                }
             } catch (err) {
                 console.error(err);
-                loadingEl.textContent = 'Error: ' + err.message;
+                debugLog('Error: ' + err.message);
+                if (page === 1) loadingEl.textContent = 'Error.';
+            } finally {
+                isLoading = false;
+                // Sentinel visibility management
+                if (currentPage >= totalPages) {
+                    sentinel.style.display = 'none';
+                    debugLog('Reached end.');
+                } else {
+                    sentinel.style.display = 'block';
+                    debugLog('Ready for more.');
+                }
             }
         }
 
         searchInput.addEventListener('input', (e) => {
-            const term = e.target.value.trim();
-            clearTimeout(debounceTimer);
-            if (term.length < 3) {
-                if (term.length === 0) renderTable([]);
-                return;
-            }
-            debounceTimer = setTimeout(() => { fetchInventory(term); }, 600);
+            triggerSearch(e.target.value.trim());
         });
 
+        function triggerSearch(term) {
+            clearTimeout(debounceTimer);
+            if (term.length < 3 && currentCategoryId === 0) {
+                if (term.length === 0) {
+                    renderTable([], true);
+                    sentinel.style.display = 'none';
+                }
+                return;
+            }
+            // Reset to page 1
+            debounceTimer = setTimeout(() => {
+                renderTable([], true); // Clear immediately for feel
+                fetchInventory(term, 1);
+            }, 600);
+        }
+
         // --- Render ---
-        function renderTable(products) {
+        function renderTable(products, replace = false) {
             const head = document.getElementById('table-headers');
             const body = document.getElementById('table-body');
-            body.innerHTML = ''; head.innerHTML = '';
 
-            if (products.length === 0) return;
+            if (replace) {
+                body.innerHTML = '';
+                head.innerHTML = '';
+            }
 
-            // Headers
-            const staticHeaders = ['Image', 'SKU', 'Ref Code', 'Product Name', 'Stock'];
-            let priceHeaders = [];
-            products.forEach(p => {
-                if (p.prices) Object.keys(p.prices).forEach(k => { if (!priceHeaders.includes(k)) priceHeaders.push(k); });
-            });
+            if (products.length === 0 && replace) return; // If no products and replacing, just return.
 
-            // Build Head
-            staticHeaders.forEach(h => { let th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
-            priceHeaders.forEach(k => {
-                let th = document.createElement('th');
-                th.textContent = k.replace(/_/g, ' ').replace('Group', 'Grp').replace('B2b', '');
-                th.className = 'price-col';
-                head.appendChild(th);
-            });
+            if (head.children.length === 0) {
+                const staticHeaders = ['', 'Κωδικός', 'Γνήσιος Κωδικός', 'Όνομα', 'Απόθεμα'];
+                let priceHeaders = [];
+                products.forEach(p => {
+                    if (p.prices) Object.keys(p.prices).forEach(k => {
+                        if (!priceHeaders.includes(k) && !HIDDEN_PRICES.includes(k)) priceHeaders.push(k);
+                    });
+                });
 
-            // Build Body
+                staticHeaders.forEach(h => { let th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
+                priceHeaders.forEach(k => {
+                    let th = document.createElement('th');
+                    th.textContent = formatPriceLabel(k);
+                    th.className = 'price-col';
+                    head.appendChild(th);
+                });
+
+                head.dataset.keys = JSON.stringify(priceHeaders);
+            }
+
+            let priceKeys = [];
+            try { priceKeys = JSON.parse(head.dataset.keys || '[]'); } catch (e) { }
+
             products.forEach(p => {
                 const tr = document.createElement('tr');
                 tr.onclick = () => openProductModal(p);
@@ -568,17 +902,16 @@
                 const img = p.img || 'https://via.placeholder.com/100?text=No+Item';
 
                 let html = `
-                    <td data-label="Image"><img src="${img}" class="img-thumb" loading="lazy"></td>
-                    <td data-label="SKU"><strong>${p.sku || '-'}</strong></td>
-                    <td data-label="Ref Code">${p.gn || '-'}</td>
-                    <td data-label="Name">${p.name}</td>
-                    <td data-label="Stock"><span class="stock-badge ${stockClass}">${stock}</span></td>
+                    <td data-label=""><img src="${img}" class="img-thumb" loading="lazy"></td>
+                    <td data-label="Κωδικός"><strong>${p.sku || '-'}</strong></td>
+                    <td data-label="Γνήσιος Κωδικός">${p.gn || '-'}</td>
+                    <td data-label="Όνομα">${p.name}</td>
+                    <td data-label="Απόθεμα"><span class="stock-badge ${stockClass}">${stock}</span></td>
                 `;
 
-                priceHeaders.forEach(k => {
+                priceKeys.forEach(k => {
                     let val = p.prices && p.prices[k] ? parseFloat(p.prices[k]).toFixed(2) + ' €' : '-';
-                    // Clean label for mobile
-                    let label = k.replace(/_/g, ' ').replace('Group', 'Grp').replace('B2b', '');
+                    let label = formatPriceLabel(k);
                     html += `<td data-label="${label}" class="price-col">${val}</td>`;
                 });
 
@@ -595,12 +928,13 @@
             document.getElementById('modal-loading').style.display = 'block';
             document.getElementById('modal-title').textContent = p.sku;
 
+            // Basic data first
             document.getElementById('modal-name').textContent = p.name;
 
-            // Fetch Details using CFG
-            if (CFG.API_URL && CFG.API_KEY) {
-                const url = CFG.API_URL + (CFG.API_URL.includes('?') ? '&' : '?') + 'id=' + p.id;
-                fetch(url, { headers: { 'X-INVENTORY-KEY': CFG.API_KEY } })
+            // Fetch Details
+            if (CONFIG.URL && CONFIG.KEY) {
+                const url = CONFIG.URL + (CONFIG.URL.includes('?') ? '&' : '?') + 'id=' + p.id;
+                fetch(url, { headers: { 'X-INVENTORY-KEY': CONFIG.KEY } })
                     .then(r => r.json())
                     .then(d => {
                         if (d.error) throw new Error(d.error);
@@ -608,29 +942,42 @@
                         document.getElementById('modal-loading').style.display = 'none';
                         document.getElementById('modal-content').style.display = 'grid'; // Grid layout
 
+                        // Fill Data
                         document.getElementById('modal-name').textContent = d.name;
                         document.getElementById('modal-sku').textContent = d.sku;
+                        // document.getElementById('modal-cats').innerHTML = d.categories || '-';
                         document.getElementById('modal-gn').textContent = d.gnisios || '-';
                         document.getElementById('modal-stock').innerHTML = `<span class="stock-badge ${d.status === 'instock' ? 'stock-in' : 'stock-out'}">${d.stock}</span>`;
                         document.getElementById('modal-description').innerHTML = d.description || 'No description.';
 
+                        // Gallery
                         const gal = document.getElementById('modal-gallery');
                         gal.innerHTML = '';
                         if (d.images && d.images.length > 0) {
                             d.images.forEach(src => {
-                                let i = document.createElement('img');
-                                i.src = src; i.style.cssText = 'width:100%; border-radius:4px; border:1px solid #ddd;';
-                                gal.appendChild(i);
+                                let img = document.createElement('img');
+                                img.src = src;
+                                img.style.width = '100%';
+                                img.style.borderRadius = '4px';
+                                img.style.border = '1px solid #eee';
+                                gal.appendChild(img);
                             });
                         }
 
-                        const pt = document.getElementById('modal-prices');
-                        pt.innerHTML = '';
-                        if (d.prices) Object.keys(d.prices).forEach(k => {
-                            let row = document.createElement('tr');
-                            row.innerHTML = `<td>${k.replace('Group', 'Grp')}</td><td style="font-weight:bold; text-align:right;">${parseFloat(d.prices[k]).toFixed(2)} €</td>`;
-                            pt.appendChild(row);
-                        });
+                        // Prices
+                        const tbody = document.getElementById('modal-prices');
+                        tbody.innerHTML = '';
+                        if (d.prices) {
+                            Object.keys(d.prices).forEach(k => {
+                                if (HIDDEN_PRICES.includes(k)) return;
+                                let tr = document.createElement('tr');
+                                let label = formatPriceLabel(k);
+                                let val = parseFloat(d.prices[k]).toFixed(2) + ' €';
+                                tr.innerHTML = `<td>${label}</td><td style="font-weight:bold; color:var(--primary-color); text-align:right;">${val}</td>`;
+                                tbody.appendChild(tr);
+                            });
+                        }
+
                     })
                     .catch(e => {
                         document.getElementById('modal-loading').textContent = 'Error loading details.';
@@ -638,8 +985,9 @@
             }
         }
 
-        document.getElementById('btn-close-modal').onclick = () => modal.style.display = 'none';
-        window.onclick = (e) => { if (e.target == modal) modal.style.display = 'none'; }
+        document.getElementById('btn-close-modal').onclick = () => { modal.style.display = 'none'; };
+        modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+
     </script>
 </body>
 
