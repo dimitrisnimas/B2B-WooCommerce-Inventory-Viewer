@@ -49,4 +49,5 @@ const PRICE_MAPPING = {
 
 ## Credits
 
-Developed by **[KUBIK](https://kubik.gr)**.
+Developed by **[Dimitris Nimas](https://dimitrisnimas.gr)**.
+
