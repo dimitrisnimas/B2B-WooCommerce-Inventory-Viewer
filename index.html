@@ -844,6 +844,15 @@
 
         function triggerSearch(term) {
             clearTimeout(debounceTimer);
+
+            // Auto-discard category if searching
+            if (term.length > 0 && currentCategoryId !== 0) {
+                currentCategoryId = 0;
+                currentCategoryName = '';
+                document.querySelectorAll('.cat-link').forEach(l => l.classList.remove('active'));
+                document.getElementById('current-view-title').style.display = 'none';
+            }
+
             if (term.length < 3 && currentCategoryId === 0) {
                 if (term.length === 0) {
                     renderTable([], true);
