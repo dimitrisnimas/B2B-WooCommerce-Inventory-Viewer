@@ -5,6 +5,9 @@
     <arg name="basepath" value="."/>
     <arg name="colors"/>
     <arg value="sp"/>
-    <rule ref="WordPress-Core"/>
+    <rule ref="WordPress-Core">
+        <!-- The root file is the WordPress plugin bootstrap, not a class include. -->
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+    </rule>
     <config name="minimum_supported_wp_version" value="6.5"/>
 </ruleset>

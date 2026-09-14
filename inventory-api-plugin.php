@@ -25,9 +25,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Plugin {
-	private const REST_NAMESPACE = 'inventory-viewer/v1';
+	private const REST_NAMESPACE   = 'inventory-viewer/v1';
 	private const DEFAULT_PER_PAGE = 24;
-	private const MAX_PER_PAGE = 50;
+	private const MAX_PER_PAGE     = 50;
 
 	public static function boot(): void {
 		add_action( 'rest_api_init', array( self::class, 'register_routes' ) );
@@ -229,7 +229,7 @@ final class Plugin {
 			'id'             => $product->get_id(),
 			'name'           => $product->get_name(),
 			'sku'            => $product->get_sku(),
-			'image'          => wp_get_attachment_image_url( $product->get_image_id(), 'woocommerce_thumbnail' ) ?: '',
+			'image'          => self::get_attachment_image_url( $product->get_image_id(), 'woocommerce_thumbnail' ),
 			'stock_quantity' => $product->get_stock_quantity(),
 			'stock_status'   => $product->get_stock_status(),
 			'prices'         => array( 'retail' => $product->get_price() ),
@@ -249,11 +249,17 @@ final class Plugin {
 		);
 
 		$images = array_map(
-			static fn( int $image_id ): string => wp_get_attachment_image_url( $image_id, 'large' ) ?: '',
+			static fn( int $image_id ): string => self::get_attachment_image_url( $image_id, 'large' ),
 			array_map( 'absint', $image_ids )
 		);
 
 		return array_values( array_filter( $images ) );
+	}
+
+	private static function get_attachment_image_url( int $image_id, string $size ): string {
+		$url = wp_get_attachment_image_url( $image_id, $size );
+
+		return false === $url ? '' : $url;
 	}
 
 	public static function render_dependency_notice(): void {
