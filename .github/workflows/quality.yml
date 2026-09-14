@@ -1,0 +1,48 @@
+name: Quality checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "7.4"
+          tools: composer:v2
+
+      - name: Install quality tools
+        run: composer install --no-interaction --no-progress
+
+      - name: Check PHP syntax
+        run: composer lint
+
+      - name: Check WordPress coding standards
+        run: composer phpcs
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check JavaScript syntax
+        run: node --check viewer/assets/app.js
+
+      - name: Validate demo data
+        run: node -e "JSON.parse(require('fs').readFileSync('viewer/demo-data.json', 'utf8'))"

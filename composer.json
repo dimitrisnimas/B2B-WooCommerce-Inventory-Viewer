@@ -1,0 +1,23 @@
+{
+  "name": "dimitrisnimas/b2b-woocommerce-inventory-viewer",
+  "description": "A portfolio WooCommerce inventory viewer and reference REST API.",
+  "type": "wordpress-plugin",
+  "license": "MIT",
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "wp-coding-standards/wpcs": "^3.0"
+  },
+  "scripts": {
+    "lint": "php -l inventory-api-plugin.php",
+    "phpcs": "phpcs --standard=phpcs.xml.dist"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "sort-packages": true
+  }
+}

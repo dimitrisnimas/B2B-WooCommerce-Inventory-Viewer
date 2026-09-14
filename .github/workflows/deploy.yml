@@ -1,48 +1,40 @@
-name: Deploy Inventory Viewer
+name: Deploy demo to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
+    paths:
+      - "viewer/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - name: Inject Configuration
-        env:
-          INV_API_URL: ${{ secrets.INV_API_URL }}
-          INV_API_KEY: ${{ secrets.INV_API_KEY }}
-          INV_AUTH_USER: ${{ secrets.INV_AUTH_USER }}
-          INV_AUTH_PASS: ${{ secrets.INV_AUTH_PASS }}
-        run: |
-          python3 -c "
-          import os
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
-          # Read file
-          with open('index.html', 'r', encoding='utf-8') as f:
-              content = f.read()
-
-          # Replace safely
-          content = content.replace('{{API_URL}}', os.environ.get('INV_API_URL', ''))
-          content = content.replace('{{API_KEY}}', os.environ.get('INV_API_KEY', ''))
-          content = content.replace('{{AUTH_USER}}', os.environ.get('INV_AUTH_USER', ''))
-          content = content.replace('{{AUTH_PASS}}', os.environ.get('INV_AUTH_PASS', ''))
-
-          # Save file
-          with open('index.html', 'w', encoding='utf-8') as f:
-              f.write(content)
-          
-          print('Injection complete.')
-          "
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload static demo
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
+          path: viewer
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

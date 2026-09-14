@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<ruleset name="B2B Inventory Viewer">
+    <description>WordPress coding standards for the reference plugin.</description>
+    <file>inventory-api-plugin.php</file>
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+    <rule ref="WordPress-Core"/>
+    <config name="minimum_supported_wp_version" value="6.5"/>
+</ruleset>

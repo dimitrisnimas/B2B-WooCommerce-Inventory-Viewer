@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="el">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A demonstration WooCommerce B2B inventory viewer.">
+    <title>Inventory Viewer Demo</title>
+    <link rel="stylesheet" href="assets/app.css">
+    <script type="module" src="assets/app.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div>
+            <p class="eyebrow">Portfolio demonstration</p>
+            <h1>Inventory Viewer</h1>
+            <p class="subtitle">Fast product lookup for wholesale teams.</p>
+        </div>
+        <span class="demo-badge">Sample data</span>
+    </header>
+
+    <main class="layout">
+        <aside class="sidebar" aria-labelledby="categories-title">
+            <div class="sidebar-heading">
+                <h2 id="categories-title">Κατηγορίες</h2>
+                <button id="clear-category" class="text-button" type="button" hidden>Καθαρισμός</button>
+            </div>
+            <nav id="category-list" aria-label="Κατηγορίες προϊόντων"></nav>
+        </aside>
+
+        <section class="content" aria-labelledby="results-title">
+            <div class="toolbar">
+                <label class="search-field" for="search-input">
+                    <span class="visually-hidden">Αναζήτηση προϊόντων</span>
+                    <input id="search-input" type="search" placeholder="Αναζήτηση με όνομα ή SKU…" autocomplete="off">
+                </label>
+                <p id="result-status" class="status" role="status" aria-live="polite"></p>
+            </div>
+
+            <h2 id="results-title" class="visually-hidden">Αποτελέσματα</h2>
+            <div id="empty-state" class="empty-state" hidden>
+                <h3>Δεν βρέθηκαν προϊόντα</h3>
+                <p>Δοκίμασε διαφορετικό όνομα, SKU ή κατηγορία.</p>
+            </div>
+            <div id="product-grid" class="product-grid"></div>
+            <button id="load-more" class="load-more" type="button" hidden>Περισσότερα προϊόντα</button>
+        </section>
+    </main>
+
+    <dialog id="product-dialog" class="product-dialog" aria-labelledby="dialog-title">
+        <button id="close-dialog" class="dialog-close" type="button" aria-label="Κλείσιμο">×</button>
+        <div id="dialog-content"></div>
+    </dialog>
+
+    <footer>
+        Built as a WordPress/WooCommerce portfolio project by
+        <a href="https://dimitrisnimas.gr" rel="noopener noreferrer">Dimitris Nimas</a>.
+    </footer>
+
+    <template id="product-card-template">
+        <article class="product-card">
+            <button class="product-open" type="button">
+                <img class="product-image" alt="" width="240" height="180" loading="lazy">
+                <span class="product-copy">
+                    <span class="product-meta"></span>
+                    <strong class="product-name"></strong>
+                    <span class="product-stock"></span>
+                    <span class="product-prices"></span>
+                </span>
+            </button>
+        </article>
+    </template>
+</body>
+</html>
